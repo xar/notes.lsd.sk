@@ -1,7 +1,9 @@
 FROM rethinkdb/horizon
 
-
 ADD package.json /usr/app
+
+WORKDIR /usr/app
+
 RUN npm install
 
 COPY . /usr/app
