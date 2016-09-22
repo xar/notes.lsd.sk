@@ -6,6 +6,8 @@ WORKDIR /usr/app
 
 RUN npm install
 
+RUN npm i -g webpack webpack-dev-server
+
 COPY . /usr/app
 
 WORKDIR /usr/app
