@@ -1,0 +1,15 @@
+horizon:
+  image: registry.rainbowcrown.com:7443/root/simpleeditor:app-next
+  command: su -s /bin/sh horizon -c "hz serve --connect rethinkdb:28015 --bind all /usr/app"
+  links:
+    - rethinkdb
+  expose:
+    - "80"
+rethinkdb:
+  image: rethinkdb
+  restart: always
+  #labels:
+  #  io.rancher.scheduler.affinity:host_label_soft: name=batman.lsd.sk
+  #  io.rancher.scheduler.affinity:host_label: name=batman.lsd.sk
+  volumes:
+    - /docker/notes.previe.lsd.sk/rethinkdb:/data
