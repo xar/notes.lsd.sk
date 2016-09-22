@@ -1,8 +1,9 @@
 horizon:
-  image: registry.rainbowcrown.com:7443/root/simpleeditor:app-next
-  command: su -s /bin/sh horizon -c "hz serve --connect rethinkdb:28015 --bind all /usr/app"
   links:
     - rethinkdb
+application:
+  image: registry.rainbowcrown.com:7443/root/simpleeditor:app-next
+  command: npm run serve
   expose:
     - "80"
 rethinkdb:
@@ -12,4 +13,4 @@ rethinkdb:
   #  io.rancher.scheduler.affinity:host_label_soft: name=batman.lsd.sk
   #  io.rancher.scheduler.affinity:host_label: name=batman.lsd.sk
   volumes:
-    - /docker/notes.previe.lsd.sk/rethinkdb:/data
+    - /docker/notes.preview.lsd.sk/rethinkdb:/data
