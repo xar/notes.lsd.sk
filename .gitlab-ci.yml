@@ -1,0 +1,78 @@
+image: docker:git
+services:
+- docker:dind
+
+stages:
+- build
+- deploy
+
+variables:
+  DOCKER_DRIVER: overlay
+  MASTER_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:app-latest
+  MASTER_CLIENT_PATH: ./
+  MASTER_CLIENT_DOCKERFILE: ./Dockerfile
+  DEVEL_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:app-next
+  DEVEL_CLIENT_PATH: ./
+  DEVEL_CLIENT_DOCKERFILE: ./Dockerfile
+
+## FEATURE STEPS
+lint_develop:
+  stage: test
+  image: node:slim
+  script:
+    - npm install standard --global
+    - npm install -g snazzy
+    - standard --verbose | snazzy
+  only:
+    - /^feature/.*$/
+  allow_failure: true
+
+build:
+  stage: build
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.rainbowcrown.com:7443
+    - docker build -f $MASTER_CLIENT_DOCKERFILE -t $MASTER_CLIENT_IMAGE $MASTER_CLIENT_PATH
+    - docker push $MASTER_CLIENT_IMAGE
+  only:
+    - master
+
+build_devel:
+  stage: build
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.rainbowcrown.com:7443
+    - docker build -f $DEVEL_CLIENT_DOCKERFILE -t $DEVEL_CLIENT_IMAGE $DEVEL_CLIENT_PATH
+    - docker push $DEVEL_CLIENT_IMAGE
+  only:
+    - develop
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - docker login -u $REGISTRY_NAME -p $REGISTRY_PASSWORD registry.mofa.sk:5000
+#     - docker pull registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+#     - docker run --rm
+#         -e RANCHER_URL="https://rancher.mofa.sk/v1/projects/1a18"
+#         -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY
+#         -e RANCHER_SECRET_KEY=$RANCHER_SECRET_KEY
+#         -e RANCHER_STACK_ID="1e16"
+#         -e RANCHER_STACK_NAME="RcGoshesSpaceWeb"
+#         -e RANCHER_SERVICE_NAME="WebClient"
+#         registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+#   only:
+#     - master
+
+# deploy_devel:
+#   stage: deploy
+#   script:
+#     - docker login -u $REGISTRY_NAME -p $REGISTRY_PASSWORD registry.mofa.sk:5000
+#     - docker pull registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+#     - docker run --rm
+#         -e RANCHER_URL="https://rancher.mofa.sk/v1/projects/1a18"
+#         -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY
+#         -e RANCHER_SECRET_KEY=$RANCHER_SECRET_KEY
+#         -e RANCHER_STACK_ID="1e17"
+#         -e RANCHER_STACK_NAME="DevelGoshesSpaceWeb"
+#         -e RANCHER_SERVICE_NAME="WebClient"
+#         registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+#   only:
+#     - develop
