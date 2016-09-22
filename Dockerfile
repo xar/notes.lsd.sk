@@ -1,18 +1,16 @@
-FROM rethinkdb/horizon
+FROM node:latest
 
-ADD package.json /usr/app
+RUN mkdir /src
 
-WORKDIR /usr/app
-
+WORKDIR /src/app
+ADD package.json /src/app
 RUN npm install
 
-RUN npm i -g webpack webpack-dev-server
+COPY . /src/app
 
-COPY . /usr/app
-
-WORKDIR /usr/app
+WORKDIR /src/app
 RUN npm run build
 
 EXPOSE 3002
 
-WORKDIR /usr/app
+WORKDIR /src/app
