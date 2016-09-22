@@ -3,6 +3,7 @@ services:
 - docker:dind
 
 stages:
+- test
 - build
 - deploy
 
