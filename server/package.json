@@ -1,0 +1,22 @@
+{
+  "name": "simple-editor-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "body-parser": "1.0.2",
+    "cors": "^2.8.1",
+    "crypto": "0.0.3",
+    "express": "4.0.0",
+    "rethinkdb": "^2.2.1",
+    "thinky": "^2.3.7"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodejs-dashboard": "^0.1.1"
+  }
+}

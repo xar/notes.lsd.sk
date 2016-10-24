@@ -1,10 +1,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import hz from '../helpers/hz.js'
 
 Vue.use(Vuex)
-
-const notes = hz('notes')
 
 const state = {
   note: ''
