@@ -55,7 +55,7 @@ export default {
         var EditorClient = ot.EditorClient
         var SocketIOAdapter = ot.SocketIOAdapter
         var CodeMirrorAdapter = ot.CodeMirrorAdapter
-        var socket = io.connect('http://notes.lsd.sk:3001')
+        var socket = io.connect('http://notes.lsd.sk:3002')
         var editorWrapper = document.getElementById('editor-wrapper')
 
         var cm = CodeMirror(editorWrapper, {
