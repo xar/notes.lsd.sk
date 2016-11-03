@@ -1,0 +1,27 @@
+version: '2'
+services:
+  NotesApp:
+    ports:
+    - 3001:3001/tcp
+    environment:
+      LETSENCRYPT_EMAIL: samo@vrablik.eu
+      LETSENCRYPT_HOST: notes.lsd.sk
+      VIRTUAL_HOST: notes.lsd.sk
+      VIRTUAL_PORT: '3001'
+    labels:
+      io.rancher.container.pull_image: always
+    tty: true
+    image: registry.rainbowcrown.com:7443/root/simpleeditor:latest
+    logging: {}
+    links:
+    - rethinkdb:rethinkdb
+    stdin_open: true
+  rethinkdb:
+    labels:
+      io.rancher.container.pull_image: always
+    tty: true
+    image: rethinkdb:latest
+    logging: {}
+    volumes:
+    - /docker/notes.lsd.sk/rethinkdb:/data
+    stdin_open: true

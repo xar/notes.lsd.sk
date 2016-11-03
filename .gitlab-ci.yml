@@ -9,10 +9,10 @@ stages:
 
 variables:
   DOCKER_DRIVER: overlay
-  MASTER_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:app-latest
+  MASTER_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:latest
   MASTER_CLIENT_PATH: ./
   MASTER_CLIENT_DOCKERFILE: ./Dockerfile
-  DEVEL_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:app-next
+  DEVEL_CLIENT_IMAGE: registry.rainbowcrown.com:7443/root/simpleeditor:next
   DEVEL_CLIENT_PATH: ./
   DEVEL_CLIENT_DOCKERFILE: ./Dockerfile
 
