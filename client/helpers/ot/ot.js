@@ -1,19 +1,9 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
-    <title><%= htmlWebpackPlugin.options.title %></title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,700&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-  </head>
-  <body>
-    <div id="app"></div>
-    <script>
-      /*
+/*
  *    /\
- *   /  \ ot 0.0.14
+ *   /  \ ot 0.0.12
  *  /    \ http://operational-transformation.github.com
  *  \    /
- *   \  / (c) 2012-2014 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
+ *   \  / (c) 2012-2013 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
  *    \/ ot may be freely distributed under the MIT license.
  */
 
@@ -50,7 +40,7 @@ ot.TextOperation = (function () {
     if (this.targetLength !== other.targetLength) { return false; }
     if (this.ops.length !== other.ops.length) { return false; }
     for (var i = 0; i < this.ops.length; i++) {
-      if (this.ops[i] !== other.ops[i]) { return false; }
+      if (this.ops[i] !== other.ops[i]) { return false; }
     }
     return true;
   };
@@ -552,33 +542,36 @@ if (typeof ot === 'undefined') {
   var ot = {};
 }
 
-ot.Selection = (function (global) {
+ot.Cursor = (function (global) {
   'use strict';
 
   var TextOperation = global.ot ? global.ot.TextOperation : require('./text-operation');
 
-  // Range has `anchor` and `head` properties, which are zero-based indices into
-  // the document. The `anchor` is the side of the selection that stays fixed,
-  // `head` is the side of the selection where the cursor is. When both are
-  // equal, the range represents a cursor.
-  function Range (anchor, head) {
-    this.anchor = anchor;
-    this.head = head;
+  // A cursor has a `position` and a `selectionEnd`. Both are zero-based indexes
+  // into the document. When nothing is selected, `selectionEnd` is equal to
+  // `position`. When there is a selection, `position` is always the side of the
+  // selection that would move if you pressed an arrow key.
+  function Cursor (position, selectionEnd) {
+    this.position = position;
+    this.selectionEnd = selectionEnd;
   }
 
-  Range.fromJSON = function (obj) {
-    return new Range(obj.anchor, obj.head);
+  Cursor.fromJSON = function (obj) {
+    return new Cursor(obj.position, obj.selectionEnd);
   };
 
-  Range.prototype.equals = function (other) {
-    return this.anchor === other.anchor && this.head === other.head;
+  Cursor.prototype.equals = function (other) {
+    return this.position === other.position &&
+      this.selectionEnd === other.selectionEnd;
   };
 
-  Range.prototype.isEmpty = function () {
-    return this.anchor === this.head;
+  // Return the more current cursor information.
+  Cursor.prototype.compose = function (other) {
+    return other;
   };
 
-  Range.prototype.transform = function (other) {
+  // Update the cursor with respect to an operation.
+  Cursor.prototype.transform = function (other) {
     function transformIndex (index) {
       var newIndex = index;
       var ops = other.ops;
@@ -596,73 +589,20 @@ ot.Selection = (function (global) {
       return newIndex;
     }
 
-    var newAnchor = transformIndex(this.anchor);
-    if (this.anchor === this.head) {
-      return new Range(newAnchor, newAnchor);
+    var newPosition = transformIndex(this.position);
+    if (this.position === this.selectionEnd) {
+      return new Cursor(newPosition, newPosition);
     }
-    return new Range(newAnchor, transformIndex(this.head));
+    return new Cursor(newPosition, transformIndex(this.selectionEnd));
   };
 
-  // A selection is basically an array of ranges. Every range represents a real
-  // selection or a cursor in the document (when the start position equals the
-  // end position of the range). The array must not be empty.
-  function Selection (ranges) {
-    this.ranges = ranges || [];
-  }
-
-  Selection.Range = Range;
-
-  // Convenience method for creating selections only containing a single cursor
-  // and no real selection range.
-  Selection.createCursor = function (position) {
-    return new Selection([new Range(position, position)]);
-  };
-
-  Selection.fromJSON = function (obj) {
-    var objRanges = obj.ranges || obj;
-    for (var i = 0, ranges = []; i < objRanges.length; i++) {
-      ranges[i] = Range.fromJSON(objRanges[i]);
-    }
-    return new Selection(ranges);
-  };
-
-  Selection.prototype.equals = function (other) {
-    if (this.position !== other.position) { return false; }
-    if (this.ranges.length !== other.ranges.length) { return false; }
-    // FIXME: Sort ranges before comparing them?
-    for (var i = 0; i < this.ranges.length; i++) {
-      if (!this.ranges[i].equals(other.ranges[i])) { return false; }
-    }
-    return true;
-  };
-
-  Selection.prototype.somethingSelected = function () {
-    for (var i = 0; i < this.ranges.length; i++) {
-      if (!this.ranges[i].isEmpty()) { return true; }
-    }
-    return false;
-  };
-
-  // Return the more current selection information.
-  Selection.prototype.compose = function (other) {
-    return other;
-  };
-
-  // Update the selection with respect to an operation.
-  Selection.prototype.transform = function (other) {
-    for (var i = 0, newRanges = []; i < this.ranges.length; i++) {
-      newRanges[i] = this.ranges[i].transform(other);
-    }
-    return new Selection(newRanges);
-  };
-
-  return Selection;
+  return Cursor;
 
 }(this));
 
 // Export for CommonJS
 if (typeof module === 'object') {
-  module.exports = ot.Selection;
+  module.exports = ot.Cursor;
 }
 
 if (typeof ot === 'undefined') {
@@ -891,19 +831,19 @@ ot.Client = (function (global) {
     this.revision++;
     this.setState(this.state.serverAck(this));
   };
-
+  
   Client.prototype.serverReconnect = function () {
     if (typeof this.state.resend === 'function') { this.state.resend(this); }
   };
 
-  // Transforms a selection from the latest known server state to the current
-  // client state. For example, if we get from the server the information that
-  // another user's cursor is at position 3, but the server hasn't yet received
-  // our newest operation, an insertion of 5 characters at the beginning of the
-  // document, the correct position of the other user's cursor in our current
-  // document is 8.
-  Client.prototype.transformSelection = function (selection) {
-    return this.state.transformSelection(selection);
+  // Transforms a cursor position from the latest known server state to the
+  // current client state. For example, if we get from the server the
+  // information that another user's cursor is at position 3, but the server
+  // hasn't yet received our newest operation, an insertion of 5 characters at
+  // the beginning of the document, the correct position of the other user's
+  // cursor in our current document is 8.
+  Client.prototype.transformCursor = function (cursor) {
+    return this.state.transformCursor(cursor);
   };
 
   // Override this method.
@@ -941,7 +881,7 @@ ot.Client = (function (global) {
   };
 
   // Nothing to do because the latest server state and client state are the same.
-  Synchronized.prototype.transformSelection = function (x) { return x; };
+  Synchronized.prototype.transformCursor = function (cursor) { return cursor; };
 
   // Singleton
   var synchronized_ = new Synchronized();
@@ -983,8 +923,8 @@ ot.Client = (function (global) {
     return synchronized_;
   };
 
-  AwaitingConfirm.prototype.transformSelection = function (selection) {
-    return selection.transform(this.outstanding);
+  AwaitingConfirm.prototype.transformCursor = function (cursor) {
+    return cursor.transform(this.outstanding);
   };
 
   AwaitingConfirm.prototype.resend = function (client) {
@@ -1041,8 +981,8 @@ ot.Client = (function (global) {
     return new AwaitingConfirm(this.buffer);
   };
 
-  AwaitingWithBuffer.prototype.transformSelection = function (selection) {
-    return selection.transform(this.outstanding).transform(this.buffer);
+  AwaitingWithBuffer.prototype.transformCursor = function (cursor) {
+    return cursor.transform(this.outstanding).transform(this.buffer);
   };
 
   AwaitingWithBuffer.prototype.resend = function (client) {
@@ -1062,25 +1002,20 @@ if (typeof module === 'object') {
 
 /*global ot */
 
-ot.CodeMirrorAdapter = (function (global) {
+ot.CodeMirrorAdapter = (function () {
   'use strict';
 
   var TextOperation = ot.TextOperation;
-  var Selection = ot.Selection;
+  var Cursor = ot.Cursor;
 
   function CodeMirrorAdapter (cm) {
     this.cm = cm;
     this.ignoreNextChange = false;
-    this.changeInProgress = false;
-    this.selectionChanged = false;
 
-    bind(this, 'onChanges');
     bind(this, 'onChange');
     bind(this, 'onCursorActivity');
     bind(this, 'onFocus');
     bind(this, 'onBlur');
-
-    cm.on('changes', this.onChanges);
     cm.on('change', this.onChange);
     cm.on('cursorActivity', this.onCursorActivity);
     cm.on('focus', this.onFocus);
@@ -1089,7 +1024,6 @@ ot.CodeMirrorAdapter = (function (global) {
 
   // Removes all event listeners from the CodeMirror instance.
   CodeMirrorAdapter.prototype.detach = function () {
-    this.cm.off('changes', this.onChanges);
     this.cm.off('change', this.onChange);
     this.cm.off('cursorActivity', this.onCursorActivity);
     this.cm.off('focus', this.onFocus);
@@ -1106,19 +1040,14 @@ ot.CodeMirrorAdapter = (function (global) {
   function posEq (a, b) { return cmpPos(a, b) === 0; }
   function posLe (a, b) { return cmpPos(a, b) <= 0; }
 
-  function minPos (a, b) { return posLe(a, b) ? a : b; }
-  function maxPos (a, b) { return posLe(a, b) ? b : a; }
-
   function codemirrorDocLength (doc) {
     return doc.indexFromPos({ line: doc.lastLine(), ch: 0 }) +
       doc.getLine(doc.lastLine()).length;
   }
 
-  // Converts a CodeMirror change array (as obtained from the 'changes' event
-  // in CodeMirror v4) or single change or linked list of changes (as returned
-  // by the 'change' event in CodeMirror prior to version 4) into a
-  // TextOperation and its inverse and returns them as a two-element array.
-  CodeMirrorAdapter.operationFromCodeMirrorChanges = function (changes, doc) {
+  // Converts a CodeMirror change object into a TextOperation and its inverse
+  // and returns them as a two-element array.
+  CodeMirrorAdapter.operationFromCodeMirrorChange = function (change, doc) {
     // Approach: Replay the changes, beginning with the most recent one, and
     // construct the operation and its inverse. We have to convert the position
     // in the pre-change coordinate system to an index. We have a method to
@@ -1129,6 +1058,12 @@ ot.CodeMirrorAdapter = (function (global) {
     // pre-change coordinate system for all changes in the linked list.
     // A disadvantage of this approach is its complexity `O(n^2)` in the length
     // of the linked list of changes.
+
+    var changes = [], i = 0;
+    while (change) {
+      changes[i++] = change;
+      change = change.next;
+    }
 
     var docEndLength = codemirrorDocLength(doc);
     var operation    = new TextOperation().retain(docEndLength);
@@ -1169,8 +1104,8 @@ ot.CodeMirrorAdapter = (function (global) {
       };
     }
 
-    for (var i = changes.length - 1; i >= 0; i--) {
-      var change = changes[i];
+    for (i = changes.length - 1; i >= 0; i--) {
+      change = changes[i];
       indexFromPos = updateIndexFromPos(indexFromPos, change);
 
       var fromIndex = indexFromPos(change.from);
@@ -1195,10 +1130,6 @@ ot.CodeMirrorAdapter = (function (global) {
 
     return [operation, inverse];
   };
-
-  // Singular form for backwards compatibility.
-  CodeMirrorAdapter.operationFromCodeMirrorChange =
-    CodeMirrorAdapter.operationFromCodeMirrorChanges;
 
   // Apply an operation to a CodeMirror instance.
   CodeMirrorAdapter.applyOperationToCodeMirror = function (operation, cm) {
@@ -1225,33 +1156,17 @@ ot.CodeMirrorAdapter = (function (global) {
     this.callbacks = cb;
   };
 
-  CodeMirrorAdapter.prototype.onChange = function () {
-    // By default, CodeMirror's event order is the following:
-    // 1. 'change', 2. 'cursorActivity', 3. 'changes'.
-    // We want to fire the 'selectionChange' event after the 'change' event,
-    // but need the information from the 'changes' event. Therefore, we detect
-    // when a change is in progress by listening to the change event, setting
-    // a flag that makes this adapter defer all 'cursorActivity' events.
-    this.changeInProgress = true;
-  };
-
-  CodeMirrorAdapter.prototype.onChanges = function (_, changes) {
+  CodeMirrorAdapter.prototype.onChange = function (_, change) {
     if (!this.ignoreNextChange) {
-      var pair = CodeMirrorAdapter.operationFromCodeMirrorChanges(changes, this.cm);
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.cm);
       this.trigger('change', pair[0], pair[1]);
     }
-    if (this.selectionChanged) { this.trigger('selectionChange'); }
-    this.changeInProgress = false;
     this.ignoreNextChange = false;
   };
 
   CodeMirrorAdapter.prototype.onCursorActivity =
   CodeMirrorAdapter.prototype.onFocus = function () {
-    if (this.changeInProgress) {
-      this.selectionChanged = true;
-    } else {
-      this.trigger('selectionChange');
-    }
+    this.trigger('cursorActivity');
   };
 
   CodeMirrorAdapter.prototype.onBlur = function () {
@@ -1262,31 +1177,27 @@ ot.CodeMirrorAdapter = (function (global) {
     return this.cm.getValue();
   };
 
-  CodeMirrorAdapter.prototype.getSelection = function () {
+  CodeMirrorAdapter.prototype.getCursor = function () {
     var cm = this.cm;
-
-    var selectionList = cm.listSelections();
-    var ranges = [];
-    for (var i = 0; i < selectionList.length; i++) {
-      ranges[i] = new Selection.Range(
-        cm.indexFromPos(selectionList[i].anchor),
-        cm.indexFromPos(selectionList[i].head)
-      );
+    var cursorPos = cm.getCursor();
+    var position = cm.indexFromPos(cursorPos);
+    var selectionEnd;
+    if (cm.somethingSelected()) {
+      var startPos = cm.getCursor(true);
+      var selectionEndPos = posEq(cursorPos, startPos) ? cm.getCursor(false) : startPos;
+      selectionEnd = cm.indexFromPos(selectionEndPos);
+    } else {
+      selectionEnd = position;
     }
 
-    return new Selection(ranges);
+    return new Cursor(position, selectionEnd);
   };
 
-  CodeMirrorAdapter.prototype.setSelection = function (selection) {
-    var ranges = [];
-    for (var i = 0; i < selection.ranges.length; i++) {
-      var range = selection.ranges[i];
-      ranges[i] = {
-        anchor: this.cm.posFromIndex(range.anchor),
-        head:   this.cm.posFromIndex(range.head)
-      };
-    }
-    this.cm.setSelections(ranges);
+  CodeMirrorAdapter.prototype.setCursor = function (cursor) {
+    this.cm.setSelection(
+      this.cm.posFromIndex(cursor.position),
+      this.cm.posFromIndex(cursor.selectionEnd)
+    );
   };
 
   var addStyleRule = (function () {
@@ -1302,57 +1213,48 @@ ot.CodeMirrorAdapter = (function (global) {
     };
   }());
 
-  CodeMirrorAdapter.prototype.setOtherCursor = function (position, color, clientId) {
-    var cursorPos = this.cm.posFromIndex(position);
-    var cursorCoords = this.cm.cursorCoords(cursorPos);
-    var cursorEl = document.createElement('span');
-    cursorEl.className = 'other-client';
-    cursorEl.style.display = 'inline-block';
-    cursorEl.style.padding = '0';
-    cursorEl.style.marginLeft = cursorEl.style.marginRight = '-1px';
-    cursorEl.style.borderLeftWidth = '2px';
-    cursorEl.style.borderLeftStyle = 'solid';
-    cursorEl.style.borderLeftColor = color;
-    cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
-    cursorEl.style.zIndex = 0;
-    cursorEl.setAttribute('data-clientid', clientId);
-    return this.cm.setBookmark(cursorPos, { widget: cursorEl, insertLeft: true });
-  };
-
-  CodeMirrorAdapter.prototype.setOtherSelectionRange = function (range, color, clientId) {
-    var match = /^#([0-9a-fA-F]{6})$/.exec(color);
-    if (!match) { throw new Error("only six-digit hex colors are allowed."); }
-    var selectionClassName = 'selection-' + match[1];
-    var rule = '.' + selectionClassName + ' { background: ' + color + '; }';
-    addStyleRule(rule);
-
-    var anchorPos = this.cm.posFromIndex(range.anchor);
-    var headPos   = this.cm.posFromIndex(range.head);
-
-    return this.cm.markText(
-      minPos(anchorPos, headPos),
-      maxPos(anchorPos, headPos),
-      { className: selectionClassName }
-    );
-  };
-
-  CodeMirrorAdapter.prototype.setOtherSelection = function (selection, color, clientId) {
-    var selectionObjects = [];
-    for (var i = 0; i < selection.ranges.length; i++) {
-      var range = selection.ranges[i];
-      if (range.isEmpty()) {
-        selectionObjects[i] = this.setOtherCursor(range.head, color, clientId);
-      } else {
-        selectionObjects[i] = this.setOtherSelectionRange(range, color, clientId);
-      }
-    }
-    return {
-      clear: function () {
-        for (var i = 0; i < selectionObjects.length; i++) {
-          selectionObjects[i].clear();
+  CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color, clientId) {
+    var cursorPos = this.cm.posFromIndex(cursor.position);
+    if (cursor.position === cursor.selectionEnd) {
+      // show cursor
+      var cursorCoords = this.cm.cursorCoords(cursorPos);
+      var cursorEl = document.createElement('pre');
+      cursorEl.className = 'other-client';
+      cursorEl.style.borderLeftWidth = '2px';
+      cursorEl.style.borderLeftStyle = 'solid';
+      cursorEl.innerHTML = '&nbsp;';
+      cursorEl.style.borderLeftColor = color;
+      cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
+      cursorEl.style.marginTop = (cursorCoords.top - cursorCoords.bottom) + 'px';
+      cursorEl.style.zIndex = 0;
+      cursorEl.setAttribute('data-clientid', clientId);
+      this.cm.addWidget(cursorPos, cursorEl, false);
+      return {
+        clear: function () {
+          var parent = cursorEl.parentNode;
+          if (parent) { parent.removeChild(cursorEl); }
         }
+      };
+    } else {
+      // show selection
+      var match = /^#([0-9a-fA-F]{6})$/.exec(color);
+      if (!match) { throw new Error("only six-digit hex colors are allowed."); }
+      var selectionClassName = 'selection-' + match[1];
+      var rule = '.' + selectionClassName + ' { background: ' + color + '; }';
+      addStyleRule(rule);
+
+      var fromPos, toPos;
+      if (cursor.selectionEnd > cursor.position) {
+        fromPos = cursorPos;
+        toPos = this.cm.posFromIndex(cursor.selectionEnd);
+      } else {
+        fromPos = this.cm.posFromIndex(cursor.selectionEnd);
+        toPos = cursorPos;
       }
-    };
+      return this.cm.markText(fromPos, toPos, {
+        className: selectionClassName
+      });
+    }
   };
 
   CodeMirrorAdapter.prototype.trigger = function (event) {
@@ -1393,7 +1295,7 @@ ot.CodeMirrorAdapter = (function (global) {
 
   return CodeMirrorAdapter;
 
-}(this));
+}());
 
 /*global ot */
 
@@ -1412,24 +1314,24 @@ ot.SocketIOAdapter = (function () {
         self.trigger('set_name', clientId, name);
       })
       .on('ack', function () { self.trigger('ack'); })
-      .on('operation', function (clientId, operation, selection) {
+      .on('operation', function (clientId, operation, cursor) {
         self.trigger('operation', operation);
-        self.trigger('selection', clientId, selection);
+        self.trigger('cursor', clientId, cursor);
       })
-      .on('selection', function (clientId, selection) {
-        self.trigger('selection', clientId, selection);
+      .on('cursor', function (clientId, cursor) {
+        self.trigger('cursor', clientId, cursor);
       })
       .on('reconnect', function () {
         self.trigger('reconnect');
       });
   }
 
-  SocketIOAdapter.prototype.sendOperation = function (revision, operation, selection) {
-    this.socket.emit('operation', revision, operation, selection);
+  SocketIOAdapter.prototype.sendOperation = function (revision, operation, cursor) {
+    this.socket.emit('operation', revision, operation, cursor);
   };
 
-  SocketIOAdapter.prototype.sendSelection = function (selection) {
-    this.socket.emit('selection', selection);
+  SocketIOAdapter.prototype.sendCursor = function (cursor) {
+    this.socket.emit('cursor', cursor);
   };
 
   SocketIOAdapter.prototype.registerCallbacks = function (cb) {
@@ -1484,9 +1386,9 @@ ot.AjaxAdapter = (function () {
         var user = events[i].user;
         if (user === this.ownUserName) { continue; }
         switch (events[i].event) {
-          case 'joined':    this.trigger('set_name', user, user); break;
-          case 'left':      this.trigger('client_left', user); break;
-          case 'selection': this.trigger('selection', user, events[i].selection); break;
+          case 'joined': this.trigger('set_name', user, user); break;
+          case 'left':   this.trigger('client_left', user); break;
+          case 'cursor': this.trigger('cursor', user, events[i].cursor); break;
         }
       }
       this.minorRevision += events.length;
@@ -1521,25 +1423,25 @@ ot.AjaxAdapter = (function () {
     });
   };
 
-  AjaxAdapter.prototype.sendOperation = function (revision, operation, selection) {
+  AjaxAdapter.prototype.sendOperation = function (revision, operation, cursor) {
     if (revision !== this.majorRevision) { throw new Error("Revision numbers out of sync"); }
     var self = this;
     $.ajax({
       url: this.path + this.renderRevisionPath(),
       type: 'POST',
-      data: JSON.stringify({ operation: operation, selection: selection }),
+      data: JSON.stringify({ operation: operation, cursor: cursor }),
       contentType: 'application/json',
       processData: false,
       success: function (data) {},
       error: function () {
-        setTimeout(function () { self.sendOperation(revision, operation, selection); }, 500);
+        setTimeout(function () { self.sendOperation(revision, operation, cursor); }, 500);
       }
     });
   };
 
-  AjaxAdapter.prototype.sendSelection = function (obj) {
+  AjaxAdapter.prototype.sendCursor = function (obj) {
     $.ajax({
-      url: this.path + this.renderRevisionPath() + '/selection',
+      url: this.path + this.renderRevisionPath() + '/cursor',
       type: 'POST',
       data: JSON.stringify(obj),
       contentType: 'application/json',
@@ -1567,54 +1469,54 @@ ot.EditorClient = (function () {
   'use strict';
 
   var Client = ot.Client;
-  var Selection = ot.Selection;
+  var Cursor = ot.Cursor;
   var UndoManager = ot.UndoManager;
   var TextOperation = ot.TextOperation;
   var WrappedOperation = ot.WrappedOperation;
 
 
-  function SelfMeta (selectionBefore, selectionAfter) {
-    this.selectionBefore = selectionBefore;
-    this.selectionAfter  = selectionAfter;
+  function SelfMeta (cursorBefore, cursorAfter) {
+    this.cursorBefore = cursorBefore;
+    this.cursorAfter  = cursorAfter;
   }
 
   SelfMeta.prototype.invert = function () {
-    return new SelfMeta(this.selectionAfter, this.selectionBefore);
+    return new SelfMeta(this.cursorAfter, this.cursorBefore);
   };
 
   SelfMeta.prototype.compose = function (other) {
-    return new SelfMeta(this.selectionBefore, other.selectionAfter);
+    return new SelfMeta(this.cursorBefore, other.cursorAfter);
   };
 
   SelfMeta.prototype.transform = function (operation) {
     return new SelfMeta(
-      this.selectionBefore.transform(operation),
-      this.selectionAfter.transform(operation)
+      this.cursorBefore.transform(operation),
+      this.cursorAfter.transform(operation)
     );
   };
 
 
-  function OtherMeta (clientId, selection) {
-    this.clientId  = clientId;
-    this.selection = selection;
+  function OtherMeta (clientId, cursor) {
+    this.clientId = clientId;
+    this.cursor   = cursor;
   }
 
   OtherMeta.fromJSON = function (obj) {
     return new OtherMeta(
       obj.clientId,
-      obj.selection && Selection.fromJSON(obj.selection)
+      obj.cursor && Cursor.fromJSON(obj.cursor)
     );
   };
 
   OtherMeta.prototype.transform = function (operation) {
     return new OtherMeta(
       this.clientId,
-      this.selection && this.selection.transform(operation)
+      this.cursor && this.cursor.transform(operation)
     );
   };
 
 
-  function OtherClient (id, listEl, editorAdapter, name, selection) {
+  function OtherClient (id, listEl, editorAdapter, name, cursor) {
     this.id = id;
     this.listEl = listEl;
     this.editorAdapter = editorAdapter;
@@ -1627,7 +1529,7 @@ ot.EditorClient = (function () {
     }
 
     this.setColor(name ? hueFromName(name) : Math.random());
-    if (selection) { this.updateSelection(selection); }
+    if (cursor) { this.updateCursor(cursor); }
   }
 
   OtherClient.prototype.setColor = function (hue) {
@@ -1638,7 +1540,6 @@ ot.EditorClient = (function () {
   };
 
   OtherClient.prototype.setName = function (name) {
-    if (this.name === name) { return; }
     this.name = name;
 
     this.li.textContent = name;
@@ -1649,26 +1550,23 @@ ot.EditorClient = (function () {
     this.setColor(hueFromName(name));
   };
 
-  OtherClient.prototype.updateSelection = function (selection) {
-    this.removeSelection();
-    this.selection = selection;
-    this.mark = this.editorAdapter.setOtherSelection(
-      selection,
-      selection.position === selection.selectionEnd ? this.color : this.lightColor,
+  OtherClient.prototype.updateCursor = function (cursor) {
+    this.removeCursor();
+    this.cursor = cursor;
+    this.mark = this.editorAdapter.setOtherCursor(
+      cursor,
+      cursor.position === cursor.selectionEnd ? this.color : this.lightColor,
       this.id
     );
   };
 
   OtherClient.prototype.remove = function () {
     if (this.li) { removeElement(this.li); }
-    this.removeSelection();
+    this.removeCursor();
   };
 
-  OtherClient.prototype.removeSelection = function () {
-    if (this.mark) {
-      this.mark.clear();
-      this.mark = null;
-    }
+  OtherClient.prototype.removeCursor = function () {
+    if (this.mark) { this.mark.clear(); }
   };
 
 
@@ -1685,7 +1583,7 @@ ot.EditorClient = (function () {
 
     this.editorAdapter.registerCallbacks({
       change: function (operation, inverse) { self.onChange(operation, inverse); },
-      selectionChange: function () { self.onSelectionChange(); },
+      cursorActivity: function () { self.onCursorActivity(); },
       blur: function () { self.onBlur(); }
     });
     this.editorAdapter.registerUndo(function () { self.undo(); });
@@ -1698,13 +1596,13 @@ ot.EditorClient = (function () {
       operation: function (operation) {
         self.applyServer(TextOperation.fromJSON(operation));
       },
-      selection: function (clientId, selection) {
-        if (selection) {
-          self.getClientObject(clientId).updateSelection(
-            self.transformSelection(Selection.fromJSON(selection))
+      cursor: function (clientId, cursor) {
+        if (cursor) {
+          self.getClientObject(clientId).updateCursor(
+            self.transformCursor(Cursor.fromJSON(cursor))
           );
         } else {
-          self.getClientObject(clientId).removeSelection();
+          self.getClientObject(clientId).removeCursor();
         }
       },
       clients: function (clients) {
@@ -1717,19 +1615,15 @@ ot.EditorClient = (function () {
 
         for (clientId in clients) {
           if (clients.hasOwnProperty(clientId)) {
-            var clientObject = self.getClientObject(clientId);
-
-            if (clients[clientId].name) {
-              clientObject.setName(clients[clientId].name);
-            }
-
-            var selection = clients[clientId].selection;
-            if (selection) {
-              self.clients[clientId].updateSelection(
-                self.transformSelection(Selection.fromJSON(selection))
-              );
-            } else {
-              self.clients[clientId].removeSelection();
+            if (self.clients.hasOwnProperty(clientId)) {
+              var cursor = clients[clientId];
+              if (cursor) {
+                self.clients[clientId].updateCursor(
+                  self.transformCursor(Cursor.fromJSON(cursor))
+                );
+              } else {
+                self.clients[clientId].removeCursor();
+              }
             }
           }
         }
@@ -1746,7 +1640,7 @@ ot.EditorClient = (function () {
       this.clientListEl,
       this.editorAdapter,
       clientObj.name || clientId,
-      clientObj.selection ? Selection.fromJSON(clientObj.selection) : null
+      clientObj.cursor ? Cursor.fromJSON(clientObj.cursor) : null
     );
   };
 
@@ -1784,8 +1678,8 @@ ot.EditorClient = (function () {
   EditorClient.prototype.applyUnredo = function (operation) {
     this.undoManager.add(operation.invert(this.editorAdapter.getValue()));
     this.editorAdapter.applyOperation(operation.wrapped);
-    this.selection = operation.meta.selectionAfter;
-    this.editorAdapter.setSelection(this.selection);
+    this.cursor = operation.meta.cursorAfter;
+    this.editorAdapter.setCursor(this.cursor);
     this.applyClient(operation.wrapped);
   };
 
@@ -1802,46 +1696,46 @@ ot.EditorClient = (function () {
   };
 
   EditorClient.prototype.onChange = function (textOperation, inverse) {
-    var selectionBefore = this.selection;
-    this.updateSelection();
-    var meta = new SelfMeta(selectionBefore, this.selection);
+    var cursorBefore = this.cursor;
+    this.updateCursor();
+    var meta = new SelfMeta(cursorBefore, this.cursor);
     var operation = new WrappedOperation(textOperation, meta);
 
     var compose = this.undoManager.undoStack.length > 0 &&
       inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
-    var inverseMeta = new SelfMeta(this.selection, selectionBefore);
+    var inverseMeta = new SelfMeta(this.cursor, cursorBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
     this.applyClient(textOperation);
   };
 
-  EditorClient.prototype.updateSelection = function () {
-    this.selection = this.editorAdapter.getSelection();
+  EditorClient.prototype.updateCursor = function () {
+    this.cursor = this.editorAdapter.getCursor();
   };
 
-  EditorClient.prototype.onSelectionChange = function () {
-    var oldSelection = this.selection;
-    this.updateSelection();
-    if (oldSelection && this.selection.equals(oldSelection)) { return; }
-    this.sendSelection(this.selection);
+  EditorClient.prototype.onCursorActivity = function () {
+    var oldCursor = this.cursor;
+    this.updateCursor();
+    if (oldCursor && this.cursor.equals(oldCursor)) { return; }
+    this.sendCursor(this.cursor);
   };
 
   EditorClient.prototype.onBlur = function () {
-    this.selection = null;
-    this.sendSelection(null);
+    this.cursor = null;
+    this.sendCursor(null);
   };
 
-  EditorClient.prototype.sendSelection = function (selection) {
+  EditorClient.prototype.sendCursor = function (cursor) {
     if (this.state instanceof Client.AwaitingWithBuffer) { return; }
-    this.serverAdapter.sendSelection(selection);
+    this.serverAdapter.sendCursor(cursor);
   };
 
   EditorClient.prototype.sendOperation = function (revision, operation) {
-    this.serverAdapter.sendOperation(revision, operation.toJSON(), this.selection);
+    this.serverAdapter.sendOperation(revision, operation.toJSON(), this.cursor);
   };
 
   EditorClient.prototype.applyOperation = function (operation) {
     this.editorAdapter.applyOperation(operation);
-    this.updateSelection();
+    this.updateCursor();
     this.undoManager.transform(new WrappedOperation(operation, null));
   };
 
@@ -1895,7 +1789,3 @@ ot.EditorClient = (function () {
 
   return EditorClient;
 }());
-    </script>
-    <script src="https://npmcdn.com/horizon-remotedev/dist/hzRemotedev.js"></script>
-  </body>
-</html>

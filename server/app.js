@@ -2,8 +2,10 @@
 // Import express
 const express = require('express')
 const bodyParser = require('body-parser')
+const path = require('path')
 const app = express()
 const cors = require('cors')
+const history = require('connect-history-api-fallback')
 require("nodejs-dashboard")
 global.handleStatus = require('./helpers/StatusHandlers.js')
 // Load config for RethinkDB and express
@@ -20,6 +22,10 @@ app.use(createConnection);
 
 // Define main routes
 app.use(require('./routes'))
+app.use('/', express.static(path.join(__dirname, '../dist')))
+app.use(history())
+
+require('./controllers/io.js')
 
 // Middleware to close a connection to the database
 app.use(closeConnection);

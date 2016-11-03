@@ -12,7 +12,9 @@
   "author": "Samuel Vrablik <samo@vrablik.eu>",
   "license": "MIT",
   "dependencies": {
-    "rangy": "^1.3.0",
+    "codemirror": "^5.20.2",
+    "ot": "0.0.15",
+    "socket.io": "^1.5.1",
     "vue": "^2.0.0",
     "vue-resource": "^1.0.3",
     "vue-router": "^2.0.0",
