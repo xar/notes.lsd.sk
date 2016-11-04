@@ -14,7 +14,6 @@
 </template>
 
 <script>
-import { ContentService } from 'root/api.js/index.js'
 import { str_rand } from 'root/helpers/utils.js'
 import CodeMirror from 'codemirror'
 import io from 'socket.io-client'
