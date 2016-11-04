@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const io = require('socket.io')(3002)
+// const io = require('socket.io')(3002)
 const ot = require('../helpers/ot/index.js')
 const Utils = require('../helpers/utils.js')
 const Content = require('../models/Content.js')
