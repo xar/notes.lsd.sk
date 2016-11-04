@@ -9,7 +9,7 @@ const history = require('connect-history-api-fallback')
 require("nodejs-dashboard")
 global.handleStatus = require('./helpers/StatusHandlers.js')
 // Load config for RethinkDB and express
-const config = require(__dirname+"/config.js");
+const config = require(__dirname + '/config.js');
 
 let r = require('rethinkdb');
 
@@ -48,6 +48,7 @@ function get(req, res, next) {
  * Create a RethinkDB connection, and save it in req._rdbConn
  */
 function createConnection(req, res, next) {
+    console.log(config.rethinkdb)
     r.connect(config.rethinkdb).then(function(conn) {
         req._rdbConn = conn;
         next();

@@ -70,7 +70,7 @@ io.sockets.on('connection', function (socket) {
         var ot_server = new ot.EditorSocketIOServer(content, revisions, token, function (socket, cb) {
           content = ot_server.document
           updateContent(results.id, content)
-          cb(!!socket.mayEdit);
+          cb(!!socket.mayEdit)
         })
         console.log('Joined to room: %s', token)
         ot_server.addClient(socket)

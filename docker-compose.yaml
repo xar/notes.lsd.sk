@@ -2,7 +2,7 @@ version: '2'
 services:
   NotesApp:
     ports:
-    - 3001:3001/tcp
+    - 3002:3002/tcp
     environment:
       LETSENCRYPT_EMAIL: samo@vrablik.eu
       LETSENCRYPT_HOST: notes.lsd.sk
@@ -11,7 +11,7 @@ services:
     labels:
       io.rancher.container.pull_image: always
     tty: true
-    image: registry.rainbowcrown.com:7443/root/simpleeditor:latest
+    image: samovrablik/notes.lsd.sk
     logging: {}
     links:
     - rethinkdb:rethinkdb
