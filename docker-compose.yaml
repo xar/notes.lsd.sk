@@ -2,7 +2,7 @@ version: '2'
 services:
   NotesApp:
     ports:
-    - 3002:3002/tcp
+    - 3001:3001/tcp
     environment:
       LETSENCRYPT_EMAIL: samo@vrablik.eu
       LETSENCRYPT_HOST: notes.lsd.sk
