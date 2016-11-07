@@ -136,6 +136,7 @@ export default {
   .CodeMirror-line span{
     color: #fff;
   }
+
   .cm-s-default .cm-header {color: #fff;}
   .cm-s-default .cm-quote {color: #2CD2F1;}
   .cm-negative {color: #d44;}
@@ -220,4 +221,10 @@ export default {
   div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   .CodeMirror-matchingtag { background: rgba(255, 150, 0, .3); }
   .CodeMirror-activeline-background {background: #e8f2ff;}
+
+  .CodeMirror-selected { background: #000; }
+  .CodeMirror-focused .CodeMirror-selected { background: #000; }
+  .CodeMirror-crosshair { cursor: crosshair; }
+  .CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #000; }
+  .CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #000; }
 </style>
