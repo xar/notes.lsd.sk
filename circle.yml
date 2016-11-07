@@ -9,7 +9,7 @@ deployment:
     branch: develop
     commands:
       #Wait 20minutes before deploying. Because we are using docker hub autobuild
-      - sleep 10m
+      - sleep 9m
       - docker run --rm
         -e RANCHER_URL=$RANCHER_URL_DEV
         -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY_DEV
@@ -22,7 +22,7 @@ deployment:
     branch: master
     commands:
       #Wait 20minutes before deploying. Because we are using docker hub autobuild
-      - sleep 10m
+      - sleep 9m
       - docker run --rm
         -e RANCHER_URL=$RANCHER_URL_PROD
         -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY_PROD
