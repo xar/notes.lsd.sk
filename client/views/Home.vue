@@ -51,19 +51,21 @@ export default {
 
     initEditor () {
       setTimeout(() => {
-        var EditorClient = ot.EditorClient
-        var SocketIOAdapter = ot.SocketIOAdapter
-        var CodeMirrorAdapter = ot.CodeMirrorAdapter
-        var socket = io.connect('https://notes.lsd.sk')
-        var editorWrapper = document.getElementById('editor-wrapper')
+        const EditorClient = ot.EditorClient
+        const SocketIOAdapter = ot.SocketIOAdapter
+        const CodeMirrorAdapter = ot.CodeMirrorAdapter
+        const socket = io.connect('https://notes.lsd.sk')
+        const editorWrapper = document.getElementById('editor-wrapper')
 
-        var cm = CodeMirror(editorWrapper, {
+        const cm = CodeMirror(editorWrapper, {
           lineNumbers: false,
           lineWrapping: true,
           mode: 'gfm',
           viewportMargin: Infinity,
           readOnly: 'nocursor'
         })
+
+        cm.markText({line: 6, ch: 26}, {line: 6, ch: 42}, {className: "styled-background"})
 
         let cmClient
 
@@ -129,10 +131,12 @@ export default {
     text-align: left;
     background: transparent;
     font-size: 20px;
+    line-height: 1.2;
   }
   .CodeMirror-line span{
     color: #fff;
   }
+
   .cm-s-default .cm-header {color: #fff;}
   .cm-s-default .cm-quote {color: #2CD2F1;}
   .cm-negative {color: #d44;}
@@ -217,4 +221,10 @@ export default {
   div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   .CodeMirror-matchingtag { background: rgba(255, 150, 0, .3); }
   .CodeMirror-activeline-background {background: #e8f2ff;}
+
+  .CodeMirror-selected { background: #000; }
+  .CodeMirror-focused .CodeMirror-selected { background: #000; }
+  .CodeMirror-crosshair { cursor: crosshair; }
+  .CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #000; }
+  .CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #000; }
 </style>
