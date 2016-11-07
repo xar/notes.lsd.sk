@@ -129,6 +129,7 @@ export default {
     text-align: left;
     background: transparent;
     font-size: 20px;
+    line-height: 1.2;
   }
   .CodeMirror-line span{
     color: #fff;
