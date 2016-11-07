@@ -51,19 +51,21 @@ export default {
 
     initEditor () {
       setTimeout(() => {
-        var EditorClient = ot.EditorClient
-        var SocketIOAdapter = ot.SocketIOAdapter
-        var CodeMirrorAdapter = ot.CodeMirrorAdapter
-        var socket = io.connect('https://notes.lsd.sk')
-        var editorWrapper = document.getElementById('editor-wrapper')
+        const EditorClient = ot.EditorClient
+        const SocketIOAdapter = ot.SocketIOAdapter
+        const CodeMirrorAdapter = ot.CodeMirrorAdapter
+        const socket = io.connect('https://notes.lsd.sk')
+        const editorWrapper = document.getElementById('editor-wrapper')
 
-        var cm = CodeMirror(editorWrapper, {
+        const cm = CodeMirror(editorWrapper, {
           lineNumbers: false,
           lineWrapping: true,
           mode: 'gfm',
           viewportMargin: Infinity,
           readOnly: 'nocursor'
         })
+
+        cm.markText({line: 6, ch: 26}, {line: 6, ch: 42}, {className: "styled-background"})
 
         let cmClient
 
