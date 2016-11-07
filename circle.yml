@@ -18,3 +18,16 @@ deployment:
         -e RANCHER_STACK_NAME="DevNotes"
         -e RANCHER_SERVICE_NAME="NotesApp"
         registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+  notes_lsd_sk:
+    branch: master
+    commands:
+      #Wait 20minutes before deploying. Because we are using docker hub autobuild
+      - sleep 20m
+      - docker run --rm
+        -e RANCHER_URL=$RANCHER_URL_PROD
+        -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY_PROD
+        -e RANCHER_SECRET_KEY=$RANCHER_SECRET_KEY_PROD
+        -e RANCHER_STACK_ID="1e82"
+        -e RANCHER_STACK_NAME="NotesLsdSK"
+        -e RANCHER_SERVICE_NAME="NotesApp"
+        registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
