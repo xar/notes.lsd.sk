@@ -1,0 +1,33 @@
+machine:
+  python:
+    version: 2.7.3
+  services:
+    - docker
+
+deployment:
+  notes_preview_lsd_sk:
+    branch: develop
+    commands:
+      #Wait 20minutes before deploying. Because we are using docker hub autobuild
+      - sleep 10m
+      - docker run --rm
+        -e RANCHER_URL=$RANCHER_URL_DEV
+        -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY_DEV
+        -e RANCHER_SECRET_KEY=$RANCHER_SECRET_KEY_DEV
+        -e RANCHER_STACK_ID="1e82"
+        -e RANCHER_STACK_NAME="DevNotes"
+        -e RANCHER_SERVICE_NAME="NotesApp"
+        registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+  notes_lsd_sk:
+    branch: master
+    commands:
+      #Wait 20minutes before deploying. Because we are using docker hub autobuild
+      - sleep 10m
+      - docker run --rm
+        -e RANCHER_URL=$RANCHER_URL_PROD
+        -e RANCHER_ACCESS_KEY=$RANCHER_ACCESS_KEY_PROD
+        -e RANCHER_SECRET_KEY=$RANCHER_SECRET_KEY_PROD
+        -e RANCHER_STACK_ID="1e82"
+        -e RANCHER_STACK_NAME="NotesLsdSK"
+        -e RANCHER_SERVICE_NAME="NotesApp"
+        registry.mofa.sk:5000/admin/rancher-deployment-tool:latest

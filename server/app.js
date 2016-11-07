@@ -74,7 +74,7 @@ r.connect(config.rethinkdb, function(err, conn) {
         process.exit(1)
     }
 
-    r.table('content').indexWait('createdAt').run(conn).then(function(err, result) {
+    r.table('content').run(conn).then(function(err, result) {
         console.log("Table and index are available, starting express...")
         startExpress()
     }).error(function(err) {
