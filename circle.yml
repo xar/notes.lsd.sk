@@ -3,7 +3,7 @@ machine:
     version: 2.7.3
   services:
     - docker
-
+    
 deployment:
   notes_preview_lsd_sk:
     branch: develop
@@ -17,7 +17,7 @@ deployment:
         -e RANCHER_STACK_ID="1e82"
         -e RANCHER_STACK_NAME="DevNotes"
         -e RANCHER_SERVICE_NAME="NotesApp"
-        registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+        registry.rainbowcrown.com:7443/root/rancherautodeployment:latest
   notes_lsd_sk:
     branch: master
     commands:
@@ -30,4 +30,4 @@ deployment:
         -e RANCHER_STACK_ID="1e82"
         -e RANCHER_STACK_NAME="NotesLsdSK"
         -e RANCHER_SERVICE_NAME="NotesApp"
-        registry.mofa.sk:5000/admin/rancher-deployment-tool:latest
+        registry.rainbowcrown.com:7443/root/rancherautodeployment:latest
